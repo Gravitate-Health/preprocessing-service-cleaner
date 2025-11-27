@@ -11,7 +11,7 @@ Functions:
   - remove_all_html_element_links(): Clear all extensions
 """
 
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Set
 from preprocessor.models.html_element_link import (
     HtmlElementLink,
     CodeableReference,
@@ -201,18 +201,18 @@ def filter_html_element_links(
     return [link for link in links if predicate(link)]
 
 
-def get_element_classes(composition: Dict[str, Any]) -> List[str]:
+def get_element_classes(composition: Dict[str, Any]) -> Set[str]:
     """
-    Get list of all element classes in HtmlElementLink extensions
+    Get set of all element classes in HtmlElementLink extensions
 
     Args:
         composition: Composition resource dictionary
 
     Returns:
-        List of element class strings
+        Set of element class strings
     """
     links = list_html_element_links(composition)
-    return [link.element_class for link in links if link.element_class]
+    return {link.element_class for link in links if link.element_class}
 
 
 def get_concepts_for_element_class(

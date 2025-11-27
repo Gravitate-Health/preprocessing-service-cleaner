@@ -1,4 +1,4 @@
-# Preprocessing Service
+# Preprocessing Clueanup Service
 
 ![Docker Publish (GHCR)](https://github.com/Gravitate-Health/preprocessing-service-cleaner/actions/workflows/docker-publish.yml/badge.svg?branch=main)
 
@@ -8,8 +8,11 @@ This service provides robust preprocessing for FHIR ePI (electronic Product Info
 
 ### Key Features
 - FhirEPI model for structured ePI bundle parsing
+- **Automatic HTML optimization** - removes non-functional tags and simplifies nested structures
+- **Smart extension cleanup** - removes unused HtmlElementLink extensions based on actual HTML class usage
 - HtmlElementLink extension management (CRUD operations)
 - HTML content extraction, analysis, and modification (from `Composition.text.div`)
+- Content integrity validation ensures safe transformations
 - Standalone test runners for all major components
 - Dockerized deployment and OpenAPI integration
 - Extensive documentation and examples
@@ -34,6 +37,7 @@ pip install -r requirements.txt
 ```powershell
 python test_html_element_link_standalone.py
 python test_html_content_manager_standalone.py
+python test_html_optimization_standalone.py
 ```
 
 ### 2. Docker Usage
@@ -78,6 +82,25 @@ $env:CR_PAT | docker login ghcr.io -u <YOUR_GH_USERNAME> --password-stdin
 ### 3. API Endpoints
 - See `openapi/openapi.yaml` for full specification.
 - Main endpoint: `/preprocess` (accepts FHIR Bundle, returns processed bundle)
+
+## Preprocessing Pipeline
+
+The `/preprocess` endpoint applies the following transformations automatically:
+
+1. **HTML Optimization**
+   - Removes empty and non-functional tags (e.g., `<span></span>`, empty divs without attributes)
+   - Simplifies nested tags of the same type (e.g., `<p class="c1"><p class="c2">text</p></p>` becomes `<p class="c1 c2">text</p>`)
+   - Merges class attributes intelligently
+   - Validates content integrity (text content must remain identical)
+
+2. **Extension Cleanup**
+   - Extracts all CSS classes actually used in the optimized HTML
+   - Removes HtmlElementLink extensions that reference classes not present in the HTML
+   - Keeps only extensions with active references
+
+3. **Statistics & Logging**
+   - Reports compositions processed, optimizations applied, and extensions removed
+   - Validates each transformation for safety
 
 ## Manager Guides & Examples
 
@@ -139,28 +162,85 @@ new_html = html.replace('<h1>', '<h2>')
 update_html_content(composition, new_html)
 ```
 
+### HTML Optimizer
+
+**Purpose:** Optimize HTML by removing non-functional elements and simplifying structure while preserving content.
+
+**Key Functions:**
+- `optimize_html(html)` - Main optimization function
+- `extract_html_classes(html)` - Get all CSS classes used in HTML
+- `validate_content_integrity(original, optimized)` - Verify text content is preserved
+
+**Example Usage:**
+```python
+from preprocessor.models.html_optimizer import (
+    optimize_html, extract_html_classes, validate_content_integrity
+)
+
+# Optimize HTML (removes empty tags, simplifies nesting)
+original = '<div><span></span><p class="c1"><p class="c2">Content</p></p></div>'
+optimized = optimize_html(original)
+# Result: '<div><p class="c1 c2">Content</p></div>'
+
+# Extract classes
+classes = extract_html_classes(optimized)
+# Result: {'c1', 'c2'}
+
+# Validate integrity
+is_valid = validate_content_integrity(original, optimized)
+# Result: True (text content "Content" preserved)
+```
+
+### HtmlElementLink Cleanup
+
+**Purpose:** Remove unused HtmlElementLink extensions based on actual HTML class usage.
+
+**Key Functions:**
+- `cleanup_unused_html_element_links(composition, html_classes)` - Remove unused extensions
+- `analyze_html_element_link_usage(composition, html_content)` - Analyze usage patterns
+
+**Example Usage:**
+```python
+from preprocessor.models.html_element_link_cleanup import (
+    cleanup_unused_html_element_links, analyze_html_element_link_usage
+)
+from preprocessor.models.html_optimizer import extract_html_classes
+
+# Get classes from HTML
+html_classes = extract_html_classes(composition['text']['div'])
+
+# Remove unused extensions
+stats = cleanup_unused_html_element_links(composition, html_classes)
+print(f"Removed {stats['removed']} unused extensions")
+
+# Analyze usage (for debugging)
+analysis = analyze_html_element_link_usage(composition, composition['text']['div'])
+print(f"Used classes: {analysis['used_classes']}")
+print(f"Unused extensions: {analysis['unused_extension_classes']}")
+```
+
 ## Testing
 
 Standalone test runners are provided for all major components:
-- `test_html_element_link_standalone.py`
-- `test_html_content_manager_standalone.py`
+- `test_html_element_link_standalone.py` - HtmlElementLink extension tests
+- `test_html_content_manager_standalone.py` - HTML content manipulation tests
+- `test_html_optimization_standalone.py` - HTML optimization and cleanup tests (includes real ePI validation)
 
 Run with:
 ```powershell
 python test_html_element_link_standalone.py
 python test_html_content_manager_standalone.py
+python test_html_optimization_standalone.py
 ```
 
-## Documentation
-
-See the following markdown files for detailed guides and examples:
-- `HTMLELEMENTLINK_GUIDE.md`
-- `HTMLELEMENTLINK_QUICK_REFERENCE.md`
-- `HTMLELEMENTLINK_EXAMPLES.md`
-- `HTMLELEMENTLINK_SUMMARY.md`
-- `HTMLELEMENTLINK_INDEX.md`
-- `HTMLELEMENTLINK_DELIVERABLES.md`
+**Test Coverage:**
+- Empty tag removal
+- Nested tag simplification
+- Class extraction
+- Content integrity validation
+- HtmlElementLink cleanup logic
+- Real ePI bundle processing (7 test files)
 
 ## License
 
-See `LICENSE` for details.
+Licensed under Apache Software License 2.0, See `LICENSE` for details.

@@ -5,6 +5,19 @@ from typing import Union
 
 from preprocessor import util
 from preprocessor.models.fhir_epi import FhirEPI
+from preprocessor.models.html_element_link import HtmlElementLink
+from preprocessor.models.html_content_manager import (
+    get_html_content,
+    update_html_content
+)
+from preprocessor.models.html_optimizer import (
+    optimize_html,
+    extract_html_classes,
+    validate_content_integrity
+)
+from preprocessor.models.html_element_link_cleanup import (
+    cleanup_unused_html_element_links
+)
 
 
 def preprocess_post(body=None):  # noqa: E501
@@ -47,27 +60,59 @@ def preprocess_post(body=None):  # noqa: E501
 def _apply_preprocessing(epi: FhirEPI) -> FhirEPI:
     """Apply preprocessing transformations to the ePI
     
+    Business logic:
+    1. Extract and optimize HTML content (remove non-functional tags, simplify nested structures)
+    2. Extract all CSS classes used in the optimized HTML
+    3. Remove HtmlElementLink extensions that reference unused classes
+    
     :param epi: The input FHIR ePI
     :return: The preprocessed FHIR ePI
     """
-    # Create a copy of the ePI to avoid modifying the input
-    processed_epi = FhirEPI(
-        resource_type=epi.resource_type,
-        type=epi.type,
-        timestamp=epi.timestamp,
-        entry=epi.entry.copy() if epi.entry else [],
-        meta=epi.meta,
-        identifier=epi.identifier,
-        signature=epi.signature
-    )
+    # Work with the dict representation for easier manipulation
+    epi_dict = epi.to_dict()
     
-    # Example preprocessing steps:
-    # 1. Validate all entries
-    # 2. Normalize formatting
-    # 3. Apply business rules
-    # 4. Enhance metadata
+    # Statistics for logging/debugging
+    stats = {
+        'compositions_processed': 0,
+        'html_optimizations': 0,
+        'links_removed': 0,
+        'validation_failures': 0
+    }
     
-    # Placeholder for actual preprocessing logic
-    # You can add specific transformations here
+    # Process each entry in the bundle
+    if 'entry' in epi_dict:
+        for entry in epi_dict.get('entry', []):
+            resource = entry.get('resource', {})
+            
+            # Only process Composition resources
+            if resource.get('resourceType') == 'Composition':
+                stats['compositions_processed'] += 1
+                
+                # Step 1: Extract and optimize HTML content
+                original_html = get_html_content(resource)
+                
+                if original_html:
+                    # Optimize the HTML
+                    optimized_html = optimize_html(original_html)
+                    
+                    # Validate content integrity
+                    if validate_content_integrity(original_html, optimized_html):
+                        # Update the composition with optimized HTML
+                        update_html_content(resource, optimized_html)
+                        stats['html_optimizations'] += 1
+                        
+                        # Step 2: Extract CSS classes from optimized HTML
+                        html_classes = extract_html_classes(optimized_html)
+                        
+                        # Step 3: Remove unused HtmlElementLink extensions
+                        cleanup_stats = cleanup_unused_html_element_links(resource, html_classes)
+                        stats['links_removed'] += cleanup_stats.get('removed', 0)
+                    else:
+                        stats['validation_failures'] += 1
+                        print(f"Warning: HTML optimization validation failed for composition. Keeping original.")
     
-    return processed_epi
+    # Log statistics (in production, use proper logging)
+    print(f"Preprocessing complete: {stats}")
+    
+    # Convert back to FhirEPI model
+    return FhirEPI.from_dict(epi_dict)
