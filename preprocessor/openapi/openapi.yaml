@@ -15,17 +15,108 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-        description: ePI to preprocess.
+              $ref: '#/components/schemas/FhirBundle'
+        description: ePI to preprocess (FHIR Bundle with document type).
+        required: true
       responses:
         "200":
           content:
             application/json:
               schema:
-                type: object
-          description: OK
+                $ref: '#/components/schemas/FhirBundle'
+          description: OK - Preprocessed ePI
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad Request - Invalid input
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal Server Error
       tags:
       - Preprocess
       x-openapi-router-controller: preprocessor.controllers.preprocess_controller
 components:
-  schemas: {}
+  schemas:
+    FhirBundle:
+      type: object
+      required:
+        - resourceType
+        - type
+      properties:
+        resourceType:
+          type: string
+          example: "Bundle"
+          description: FHIR resource type (must be 'Bundle')
+        type:
+          type: string
+          example: "document"
+          description: Bundle type (must be 'document' for ePI)
+        timestamp:
+          type: string
+          format: date-time
+          description: Timestamp when the bundle was created (ISO 8601)
+        identifier:
+          type: object
+          description: A persistent identifier for the bundle
+          properties:
+            system:
+              type: string
+            value:
+              type: string
+        entry:
+          type: array
+          description: A series of resources contained in the bundle
+          items:
+            type: object
+            properties:
+              resource:
+                type: object
+                description: A resource in the bundle (Composition, Medication, Organization, etc.)
+              search:
+                type: object
+              request:
+                type: object
+              response:
+                type: object
+        meta:
+          type: object
+          description: Metadata about the resource
+          properties:
+            versionId:
+              type: string
+            lastUpdated:
+              type: string
+              format: date-time
+            profile:
+              type: array
+              items:
+                type: string
+        signature:
+          type: object
+          description: Digital signature of the bundle
+          properties:
+            type:
+              type: array
+              items:
+                type: object
+            when:
+              type: string
+              format: date-time
+            who:
+              type: object
+            sigFormat:
+              type: string
+            data:
+              type: string
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+
