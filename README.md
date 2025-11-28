@@ -221,25 +221,63 @@ print(f"Unused extensions: {analysis['unused_extension_classes']}")
 
 ## Testing
 
-Standalone test runners are provided for all major components:
+All tests are located in the `test/` directory and excluded from Docker builds.
+
+### Test Files
+
+**Unit Tests:**
+- `test_fhir_epi.py` - FHIR ePI model tests
+- `test_html_element_link.py` - HtmlElementLink extension tests
+- `test_preprocess_controller.py` - Controller tests
+
+**Integration Tests:**
+- `test_preprocessing_integration.py` - End-to-end preprocessing pipeline tests with real ePIs
+- `test_real_epis.py` - Real ePI bundle processing tests
+
+**Standalone Test Runners:**
 - `test_html_element_link_standalone.py` - HtmlElementLink extension tests
 - `test_html_content_manager_standalone.py` - HTML content manipulation tests
-- `test_html_optimization_standalone.py` - HTML optimization and cleanup tests (includes real ePI validation)
+- `test_html_optimization_standalone.py` - HTML optimization and cleanup tests
 
-Run with:
-```powershell
-python test_html_element_link_standalone.py
-python test_html_content_manager_standalone.py
-python test_html_optimization_standalone.py
+**Debug/Helper Scripts:**
+- `debug_class_extraction.py` - Debug tool for class extraction analysis
+- `test_fix.py` - Quick verification script for subsection processing
+
+**Test Data:**
+- `testing ePIs/` - Real ePI bundles for testing (Karvea, Flucelvax, Dovato, etc.)
+
+### Running Tests
+
+```bash
+# Run with pytest (recommended)
+pytest test/
+
+# Run specific test file
+pytest test/test_preprocessing_integration.py -v
+
+# Run specific test class
+pytest test/test_preprocessing_integration.py::TestPreprocessingWithKarvea -v
+
+# Run with output
+pytest test/ -v -s
+
+# Run standalone tests (no pytest required)
+python test/test_html_element_link_standalone.py
+python test/test_html_content_manager_standalone.py
+python test/test_html_optimization_standalone.py
 ```
 
-**Test Coverage:**
-- Empty tag removal
-- Nested tag simplification
-- Class extraction
+### Test Coverage
+
+- Empty tag removal and nested tag simplification
+- Class extraction from HTML content (including nested subsections)
 - Content integrity validation
 - HtmlElementLink cleanup logic
-- Real ePI bundle processing (7 test files)
+- Recursive section processing
+- Real ePI bundle processing with 8+ test bundles
+- API endpoint validation
+
+See `test/README_TESTS.md` for detailed test documentation.
 
 ## License
 

@@ -43,9 +43,13 @@ def cleanup_unused_html_element_links(composition: Dict[str, Any], html_classes:
     
     # Get all element classes from extensions
     extension_classes = get_element_classes(composition)
+    print(f"Found {stats['total']} HtmlElementLink extensions.")
+    print(f"Extension classes: {extension_classes}")
+    print(f"HTML classes: {html_classes}")
     
     # Identify which classes are not used in HTML
     unused_classes = extension_classes - html_classes
+    print(f"Unused classes: {unused_classes}")
     
     # Remove extensions for unused classes
     for element_class in unused_classes:

@@ -11,6 +11,9 @@ COPY . /usr/src/app
 
 EXPOSE 8080
 
+# Disable Python output buffering for real-time logs
+ENV PYTHONUNBUFFERED=1
+
 ENTRYPOINT ["python3"]
 
 CMD ["-m", "preprocessor"]
