@@ -229,7 +229,7 @@ def test_complex_optimization():
 
 def test_real_epi_files():
     """Test with real ePI bundle files"""
-    test_dir = project_root / 'preprocessor' / 'test' / 'testing ePIs'
+    test_dir = Path(__file__).parent / 'testing ePIs'
     
     if not test_dir.exists():
         print("⊘ Skipping real ePI tests (test directory not found)")

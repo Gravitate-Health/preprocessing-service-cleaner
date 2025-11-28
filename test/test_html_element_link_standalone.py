@@ -339,9 +339,9 @@ def test_real_epis():
     print("TEST: Real ePIs from Test Data")
     print("=" * 70)
 
-    test_folder = project_root / "preprocessor" / "test" / "testing ePIs"
+    test_folder = Path(__file__).parent / "testing ePIs"
     if not test_folder.exists():
-        test_folder = Path(__file__).parent / "preprocessor" / "test" / "testing ePIs"
+        test_folder = project_root / "test" / "testing ePIs"
 
     if not test_folder.exists():
         print("⚠ Test folder not found, skipping real ePIs tests")

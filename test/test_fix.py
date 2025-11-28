@@ -50,7 +50,7 @@ def collect_all_html_classes_from_resource(resource):
 
 def main():
     # Load test ePI
-    test_file = Path(__file__).parent / "preprocessor/test/testing ePIs/Bundle-Processedbundlekarvea.json"
+    test_file = Path(__file__).parent / "testing ePIs/Bundle-Processedbundlekarvea.json"
     
     with open(test_file, 'r') as f:
         bundle = json.load(f)

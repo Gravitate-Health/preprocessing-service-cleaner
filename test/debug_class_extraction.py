@@ -16,7 +16,7 @@ from preprocessor.models.html_element_link_manager import get_element_classes, l
 
 def main():
     # Load the test ePI
-    test_file = Path(__file__).parent / "preprocessor/test/testing ePIs/Bundle-Processedbundlekarvea.json"
+    test_file = Path(__file__).parent / "testing ePIs/Bundle-Processedbundlekarvea.json"
     
     print(f"Loading: {test_file}")
     with open(test_file, 'r', encoding='utf-8') as f:

@@ -265,7 +265,7 @@ def test_real_epis_html_extraction():
     print("TEST: Real ePIs - HTML Extraction")
     print("=" * 70)
 
-    test_folder = Path("preprocessor/test/testing ePIs")
+    test_folder = Path(__file__).parent / "testing ePIs"
     if not test_folder.exists():
         print("⚠ Test folder not found, skipping real ePIs tests")
         return
