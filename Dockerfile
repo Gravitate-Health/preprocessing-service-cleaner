@@ -19,6 +19,8 @@ ENV PYTHONUNBUFFERED=1
 ENV ENABLE_HTML_OPTIMIZATION=true
 # Set to 'false' to disable unused HtmlElementLink cleanup
 ENV ENABLE_LINK_CLEANUP=true
+# Set to 'false' to disable style and unaccounted class cleanup
+ENV ENABLE_STYLE_CLEANUP=true
 
 ENTRYPOINT ["python3"]
 

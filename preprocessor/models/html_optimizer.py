@@ -181,6 +181,46 @@ def _merge_tag_attributes(outer_tag: Tag, inner_tag: Tag) -> None:
             inner_tag[attr_name] = attr_value
 
 
+def cleanup_html_styles_and_classes(html: str, allowed_classes: Set[str]) -> str:
+    """
+    Remove style attributes and CSS classes that are not in the allowed set.
+    
+    Args:
+        html: HTML string to clean
+        allowed_classes: Set of CSS class names that should be kept (typically from HtmlElementLink extensions)
+    
+    Returns:
+        Cleaned HTML string with only allowed classes and no style attributes
+    """
+    if not html or not html.strip():
+        return html
+    
+    soup = BeautifulSoup(html, 'lxml')
+    
+    for tag in soup.find_all(True):  # Find all tags
+        # Remove style attribute
+        if tag.get('style'):
+            del tag['style']
+        
+        # Filter classes to keep only allowed ones
+        if tag.get('class'):
+            current_classes = tag.get('class', [])
+            # Keep only classes that are in the allowed set
+            filtered_classes = [cls for cls in current_classes if cls in allowed_classes]
+            
+            if filtered_classes:
+                tag['class'] = filtered_classes
+            else:
+                # Remove class attribute if no classes remain
+                del tag['class']
+    
+    # Get the body content (lxml adds html/body wrapper)
+    if soup.body:
+        return ''.join(str(child) for child in soup.body.children)
+    
+    return str(soup)
+
+
 def validate_content_integrity(original_html: str, optimized_html: str) -> bool:
     """
     Validate that optimization preserved the text content.

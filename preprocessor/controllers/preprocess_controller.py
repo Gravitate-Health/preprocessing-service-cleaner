@@ -14,7 +14,8 @@ from preprocessor.models.html_content_manager import (
 from preprocessor.models.html_optimizer import (
     optimize_html,
     extract_html_classes,
-    validate_content_integrity
+    validate_content_integrity,
+    cleanup_html_styles_and_classes
 )
 from preprocessor.models.html_element_link_cleanup import (
     cleanup_unused_html_element_links
@@ -23,6 +24,7 @@ from preprocessor.models.html_element_link_cleanup import (
 # Feature flags from environment variables
 ENABLE_HTML_OPTIMIZATION = os.getenv('ENABLE_HTML_OPTIMIZATION', 'true').lower() in ('true', '1', 'yes', 'on')
 ENABLE_LINK_CLEANUP = os.getenv('ENABLE_LINK_CLEANUP', 'true').lower() in ('true', '1', 'yes', 'on')
+ENABLE_STYLE_CLEANUP = os.getenv('ENABLE_STYLE_CLEANUP', 'true').lower() in ('true', '1', 'yes', 'on')
 
 
 def preprocess_post(body=None):  # noqa: E501
@@ -145,12 +147,14 @@ def _apply_preprocessing(epi: FhirEPI) -> FhirEPI:
         'html_optimizations': 0,
         'html_optimizations_skipped': 0,
         'links_removed': 0,
-        'validation_failures': 0
+        'validation_failures': 0,
+        'styles_cleaned': 0
     }
     
     # Log feature flags
     print(f"Feature flags: HTML_OPTIMIZATION={'enabled' if ENABLE_HTML_OPTIMIZATION else 'disabled'}, "
-          f"LINK_CLEANUP={'enabled' if ENABLE_LINK_CLEANUP else 'disabled'}")
+          f"LINK_CLEANUP={'enabled' if ENABLE_LINK_CLEANUP else 'disabled'}, "
+          f"STYLE_CLEANUP={'enabled' if ENABLE_STYLE_CLEANUP else 'disabled'}")
     
     # Process each entry in the bundle
     if 'entry' in epi_dict:
@@ -181,13 +185,48 @@ def _apply_preprocessing(epi: FhirEPI) -> FhirEPI:
                 _process_sections_recursively(resource['section'], stats)
             
             # For Composition resources, collect ALL classes from all sections and clean up links
-            if resource.get('resourceType') == 'Composition' and ENABLE_LINK_CLEANUP:
+            if resource.get('resourceType') == 'Composition':
                 # Collect classes from the entire resource tree
                 all_html_classes = _collect_all_html_classes_from_resource(resource)
                 
-                # Remove unused HtmlElementLink extensions
-                cleanup_stats = cleanup_unused_html_element_links(resource, all_html_classes)
-                stats['links_removed'] += cleanup_stats.get('removed', 0)
+                if ENABLE_LINK_CLEANUP:
+                    # Remove unused HtmlElementLink extensions
+                    cleanup_stats = cleanup_unused_html_element_links(resource, all_html_classes)
+                    stats['links_removed'] += cleanup_stats.get('removed', 0)
+                
+                if ENABLE_STYLE_CLEANUP:
+                    # Get allowed classes from HtmlElementLink extensions
+                    allowed_classes = set()
+                    for extension in resource.get('extension', []):
+                        if extension.get('url') == 'http://hl7.org/fhir/StructureDefinition/HtmlElementLink':
+                            for ext_detail in extension.get('extension', []):
+                                if ext_detail.get('url') == 'elementClass':
+                                    allowed_classes.add(ext_detail.get('valueString', ''))
+                    
+                    # Clean up styles and classes in the resource tree
+                    def cleanup_styles_in_sections(sections):
+                        for section in sections:
+                            html_content = get_html_content(section)
+                            if html_content and not html_content.is_empty:
+                                cleaned_html = cleanup_html_styles_and_classes(html_content.raw_html, allowed_classes)
+                                if cleaned_html != html_content.raw_html:
+                                    update_html_content(section, cleaned_html)
+                                    stats['styles_cleaned'] += 1
+                            
+                            if 'section' in section:
+                                cleanup_styles_in_sections(section['section'])
+                    
+                    # Clean resource-level HTML
+                    html_content = get_html_content(resource)
+                    if html_content and not html_content.is_empty:
+                        cleaned_html = cleanup_html_styles_and_classes(html_content.raw_html, allowed_classes)
+                        if cleaned_html != html_content.raw_html:
+                            update_html_content(resource, cleaned_html)
+                            stats['styles_cleaned'] += 1
+                    
+                    # Clean sections recursively
+                    if 'section' in resource:
+                        cleanup_styles_in_sections(resource['section'])
     
     # Log statistics (in production, use proper logging)
     print(f"Preprocessing complete: {stats}")

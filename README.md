@@ -99,6 +99,7 @@ The service can be configured using environment variables:
 |---------------------|---------|-------------|
 | `ENABLE_HTML_OPTIMIZATION` | `true` | Enable/disable HTML optimization (empty tag removal, nested tag simplification) |
 | `ENABLE_LINK_CLEANUP` | `true` | Enable/disable removal of unused HtmlElementLink extensions |
+| `ENABLE_STYLE_CLEANUP` | `true` | Enable/disable removal of style attributes and unaccounted CSS classes (classes not in HtmlElementLink extensions) |
 | `PYTHONUNBUFFERED` | `1` | Disable Python output buffering for real-time logs |
 
 **Valid values for boolean flags:** `true`, `1`, `yes`, `on` (enable) or `false`, `0`, `no`, `off` (disable)
@@ -123,7 +124,13 @@ The `/preprocess` endpoint applies the following transformations (controlled by 
    - Removes HtmlElementLink extensions that reference classes not present in the HTML
    - Keeps only extensions with active references
 
-3. **Statistics & Logging**
+3. **Style and Class Cleanup** (controlled by `ENABLE_STYLE_CLEANUP`)
+   - Removes all `style` attributes from HTML elements
+   - Removes CSS classes that are not defined in HtmlElementLink extensions
+   - Keeps only classes that are explicitly referenced in the FHIR extensions
+   - Processes all sections and subsections recursively
+
+4. **Statistics & Logging**
    - Reports feature flag status on startup
    - Reports compositions processed, optimizations applied, and extensions removed
    - Validates each transformation for safety
