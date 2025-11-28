@@ -14,6 +14,12 @@ EXPOSE 8080
 # Disable Python output buffering for real-time logs
 ENV PYTHONUNBUFFERED=1
 
+# Feature flags (can be overridden at runtime)
+# Set to 'false' to disable HTML optimization
+ENV ENABLE_HTML_OPTIMIZATION=true
+# Set to 'false' to disable unused HtmlElementLink cleanup
+ENV ENABLE_LINK_CLEANUP=true
+
 ENTRYPOINT ["python3"]
 
 CMD ["-m", "preprocessor"]

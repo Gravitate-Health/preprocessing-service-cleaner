@@ -72,6 +72,18 @@ docker pull ghcr.io/gravitate-health/preprocessing-service-cleaner:v1.0.0
 docker run --rm -p 8080:8080 ghcr.io/gravitate-health/preprocessing-service-cleaner:main
 ```
 
+#### Run with custom configuration
+```powershell
+# Disable HTML optimization
+docker run --rm -p 8080:8080 -e ENABLE_HTML_OPTIMIZATION=false ghcr.io/gravitate-health/preprocessing-service-cleaner:main
+
+# Disable unused link cleanup
+docker run --rm -p 8080:8080 -e ENABLE_LINK_CLEANUP=false ghcr.io/gravitate-health/preprocessing-service-cleaner:main
+
+# Disable both features (passthrough mode)
+docker run --rm -p 8080:8080 -e ENABLE_HTML_OPTIMIZATION=false -e ENABLE_LINK_CLEANUP=false ghcr.io/gravitate-health/preprocessing-service-cleaner:main
+```
+
 #### Authenticate (if needed)
 If the image is private or your org requires auth, login to GHCR:
 ```powershell
@@ -79,26 +91,40 @@ $env:CR_PAT = "<YOUR_GH_PAT_WITH_packages:read>"
 $env:CR_PAT | docker login ghcr.io -u <YOUR_GH_USERNAME> --password-stdin
 ```
 
-### 3. API Endpoints
+### 3. Configuration
+
+The service can be configured using environment variables:
+
+| Environment Variable | Default | Description |
+|---------------------|---------|-------------|
+| `ENABLE_HTML_OPTIMIZATION` | `true` | Enable/disable HTML optimization (empty tag removal, nested tag simplification) |
+| `ENABLE_LINK_CLEANUP` | `true` | Enable/disable removal of unused HtmlElementLink extensions |
+| `PYTHONUNBUFFERED` | `1` | Disable Python output buffering for real-time logs |
+
+**Valid values for boolean flags:** `true`, `1`, `yes`, `on` (enable) or `false`, `0`, `no`, `off` (disable)
+
+### 4. API Endpoints
 - See `openapi/openapi.yaml` for full specification.
 - Main endpoint: `/preprocess` (accepts FHIR Bundle, returns processed bundle)
 
 ## Preprocessing Pipeline
 
-The `/preprocess` endpoint applies the following transformations automatically:
+The `/preprocess` endpoint applies the following transformations (controlled by environment variables):
 
-1. **HTML Optimization**
+1. **HTML Optimization** (controlled by `ENABLE_HTML_OPTIMIZATION`)
    - Removes empty and non-functional tags (e.g., `<span></span>`, empty divs without attributes)
    - Simplifies nested tags of the same type (e.g., `<p class="c1"><p class="c2">text</p></p>` becomes `<p class="c1 c2">text</p>`)
    - Merges class attributes intelligently
    - Validates content integrity (text content must remain identical)
+   - Processes all sections and subsections recursively
 
-2. **Extension Cleanup**
-   - Extracts all CSS classes actually used in the optimized HTML
+2. **Extension Cleanup** (controlled by `ENABLE_LINK_CLEANUP`)
+   - Extracts all CSS classes actually used in the HTML (from all sections recursively)
    - Removes HtmlElementLink extensions that reference classes not present in the HTML
    - Keeps only extensions with active references
 
 3. **Statistics & Logging**
+   - Reports feature flag status on startup
    - Reports compositions processed, optimizations applied, and extensions removed
    - Validates each transformation for safety
 

@@ -1,4 +1,5 @@
 import connexion
+import os
 from typing import Dict
 from typing import Tuple
 from typing import Union
@@ -18,6 +19,10 @@ from preprocessor.models.html_optimizer import (
 from preprocessor.models.html_element_link_cleanup import (
     cleanup_unused_html_element_links
 )
+
+# Feature flags from environment variables
+ENABLE_HTML_OPTIMIZATION = os.getenv('ENABLE_HTML_OPTIMIZATION', 'true').lower() in ('true', '1', 'yes', 'on')
+ENABLE_LINK_CLEANUP = os.getenv('ENABLE_LINK_CLEANUP', 'true').lower() in ('true', '1', 'yes', 'on')
 
 
 def preprocess_post(body=None):  # noqa: E501
@@ -68,17 +73,20 @@ def _process_sections_recursively(sections, stats):
         html_content = get_html_content(section)
         
         if html_content and not html_content.is_empty:
-            # Optimize the HTML
-            optimized_html = optimize_html(html_content.raw_html)
-            
-            # Validate content integrity
-            if validate_content_integrity(html_content.raw_html, optimized_html):
-                # Update the section with optimized HTML
-                update_html_content(section, optimized_html)
-                stats['html_optimizations'] += 1
+            if ENABLE_HTML_OPTIMIZATION:
+                # Optimize the HTML
+                optimized_html = optimize_html(html_content.raw_html)
+                
+                # Validate content integrity
+                if validate_content_integrity(html_content.raw_html, optimized_html):
+                    # Update the section with optimized HTML
+                    update_html_content(section, optimized_html)
+                    stats['html_optimizations'] += 1
+                else:
+                    stats['validation_failures'] += 1
+                    print(f"Warning: HTML optimization validation failed for section '{section.get('title', 'N/A')}'. Keeping original.")
             else:
-                stats['validation_failures'] += 1
-                print(f"Warning: HTML optimization validation failed for section '{section.get('title', 'N/A')}'. Keeping original.")
+                stats['html_optimizations_skipped'] = stats.get('html_optimizations_skipped', 0) + 1
         
         # Process subsections recursively
         if 'section' in section:
@@ -122,9 +130,9 @@ def _apply_preprocessing(epi: FhirEPI) -> FhirEPI:
     """Apply preprocessing transformations to the ePI
     
     Business logic:
-    1. Extract and optimize HTML content (remove non-functional tags, simplify nested structures)
+    1. Extract and optimize HTML content (remove non-functional tags, simplify nested structures) - controlled by ENABLE_HTML_OPTIMIZATION
     2. Extract all CSS classes used in the optimized HTML (from all sections recursively)
-    3. Remove HtmlElementLink extensions that reference unused classes
+    3. Remove HtmlElementLink extensions that reference unused classes - controlled by ENABLE_LINK_CLEANUP
     
     :param epi: The input FHIR ePI
     :return: The preprocessed FHIR ePI
@@ -135,9 +143,14 @@ def _apply_preprocessing(epi: FhirEPI) -> FhirEPI:
     # Statistics for logging/debugging
     stats = {
         'html_optimizations': 0,
+        'html_optimizations_skipped': 0,
         'links_removed': 0,
         'validation_failures': 0
     }
+    
+    # Log feature flags
+    print(f"Feature flags: HTML_OPTIMIZATION={'enabled' if ENABLE_HTML_OPTIMIZATION else 'disabled'}, "
+          f"LINK_CLEANUP={'enabled' if ENABLE_LINK_CLEANUP else 'disabled'}")
     
     # Process each entry in the bundle
     if 'entry' in epi_dict:
@@ -148,24 +161,27 @@ def _apply_preprocessing(epi: FhirEPI) -> FhirEPI:
             html_content = get_html_content(resource)
             
             if html_content and not html_content.is_empty:
-                # Optimize the HTML
-                optimized_html = optimize_html(html_content.raw_html)
-                
-                # Validate content integrity
-                if validate_content_integrity(html_content.raw_html, optimized_html):
-                    # Update the resource with optimized HTML
-                    update_html_content(resource, optimized_html)
-                    stats['html_optimizations'] += 1
+                if ENABLE_HTML_OPTIMIZATION:
+                    # Optimize the HTML
+                    optimized_html = optimize_html(html_content.raw_html)
+                    
+                    # Validate content integrity
+                    if validate_content_integrity(html_content.raw_html, optimized_html):
+                        # Update the resource with optimized HTML
+                        update_html_content(resource, optimized_html)
+                        stats['html_optimizations'] += 1
+                    else:
+                        stats['validation_failures'] += 1
+                        print(f"Warning: HTML optimization validation failed for resource {resource.get('resourceType')}. Keeping original.")
                 else:
-                    stats['validation_failures'] += 1
-                    print(f"Warning: HTML optimization validation failed for resource {resource.get('resourceType')}. Keeping original.")
+                    stats['html_optimizations_skipped'] += 1
             
             # Process sections recursively
             if 'section' in resource:
                 _process_sections_recursively(resource['section'], stats)
             
             # For Composition resources, collect ALL classes from all sections and clean up links
-            if resource.get('resourceType') == 'Composition':
+            if resource.get('resourceType') == 'Composition' and ENABLE_LINK_CLEANUP:
                 # Collect classes from the entire resource tree
                 all_html_classes = _collect_all_html_classes_from_resource(resource)
                 
