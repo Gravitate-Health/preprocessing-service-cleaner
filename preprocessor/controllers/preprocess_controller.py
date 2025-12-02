@@ -20,6 +20,9 @@ from preprocessor.models.html_optimizer import (
 from preprocessor.models.html_element_link_cleanup import (
     cleanup_unused_html_element_links
 )
+from preprocessor.models.html_element_link_manager import (
+    get_element_classes
+)
 
 # Feature flags from environment variables
 ENABLE_HTML_OPTIMIZATION = os.getenv('ENABLE_HTML_OPTIMIZATION', 'true').lower() in ('true', '1', 'yes', 'on')
@@ -196,12 +199,7 @@ def _apply_preprocessing(epi: FhirEPI) -> FhirEPI:
                 
                 if ENABLE_STYLE_CLEANUP:
                     # Get allowed classes from HtmlElementLink extensions
-                    allowed_classes = set()
-                    for extension in resource.get('extension', []):
-                        if extension.get('url') == 'http://hl7.org/fhir/StructureDefinition/HtmlElementLink':
-                            for ext_detail in extension.get('extension', []):
-                                if ext_detail.get('url') == 'elementClass':
-                                    allowed_classes.add(ext_detail.get('valueString', ''))
+                    allowed_classes = get_element_classes(resource)
                     
                     # Clean up styles and classes in the resource tree
                     def cleanup_styles_in_sections(sections):
