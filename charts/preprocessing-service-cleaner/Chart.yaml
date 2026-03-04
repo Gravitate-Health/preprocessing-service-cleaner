@@ -1,0 +1,16 @@
+apiVersion: v2
+name: preprocessing-service-cleaner
+description: A Helm chart for deploying the Gravitate Health Preprocessing Service - cleanups and optimizes FHIR ePI bundles
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - fhir
+  - epi
+  - preprocessing
+  - gravitate-health
+maintainers:
+  - name: Gravitate Health Team
+    url: https://github.com/Gravitate-Health
+sources:
+  - https://github.com/Gravitate-Health/preprocessing-service-cleaner

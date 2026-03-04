@@ -1,0 +1,148 @@
+# Default values for preprocessing-service-cleaner
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# -- Number of replicas for the deployment
+replicaCount: 1
+
+image:
+  # -- Container image repository
+  repository: ghcr.io/gravitate-health/preprocessing-service-cleaner
+  # -- Image pull policy
+  pullPolicy: IfNotPresent
+  # -- Overrides the image tag whose default is the chart appVersion
+  tag: "latest"
+
+# -- Image pull secrets for private registries
+imagePullSecrets: []
+# - name: ghcr-secret
+
+# -- String to partially override fullname template
+nameOverride: ""
+# -- String to fully override fullname template
+fullnameOverride: ""
+
+serviceAccount:
+  # -- Specifies whether a service account should be created
+  create: true
+  # -- Annotations to add to the service account
+  annotations: {}
+  # -- The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+# -- Annotations to add to the pod
+podAnnotations: {}
+
+# -- Security context for the pod
+podSecurityContext:
+  {}
+  # fsGroup: 2000
+
+# -- Security context for the container
+securityContext:
+  {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+service:
+  # -- Service type
+  type: ClusterIP
+  # -- Service port
+  port: 80
+  # -- Target port on the container
+  targetPort: 8080
+  # -- Additional annotations for the service
+  annotations: {}
+  # -- Additional labels for the service (required for Focus Manager discovery)
+  labels:
+    eu.gravitate-health.fosps.preprocessing: "true"
+
+# -- Resource requests and limits
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+# -- Node selector
+nodeSelector: {}
+
+# -- Tolerations
+tolerations: []
+
+# -- Affinity rules
+affinity: {}
+
+# -- Liveness probe configuration
+livenessProbe:
+  enabled: true
+  httpGet:
+    path: /
+    port: http
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+# -- Readiness probe configuration
+readinessProbe:
+  enabled: true
+  httpGet:
+    path: /
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+# Configuration for the preprocessing service
+config:
+  # -- Enable/disable HTML optimization (empty tag removal, nested tag simplification)
+  enableHtmlOptimization: true
+  # -- Enable/disable unused HtmlElementLink cleanup
+  enableLinkCleanup: true
+  # -- Enable/disable style and unaccounted class cleanup
+  enableStyleCleanup: true
+
+# Ingress configuration (optional)
+ingress:
+  # -- Enable ingress
+  enabled: false
+  # -- Ingress class name
+  className: ""
+  # -- Ingress annotations
+  annotations:
+    {}
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  # -- Ingress hosts configuration
+  hosts:
+    - host: preprocessing.local
+      paths:
+        - path: /
+          pathType: Prefix
+  # -- Ingress TLS configuration
+  tls: []
+  #  - secretName: preprocessing-tls
+  #    hosts:
+  #      - preprocessing.local
+
+# Autoscaling configuration (optional)
+autoscaling:
+  # -- Enable horizontal pod autoscaling
+  enabled: false
+  # -- Minimum number of replicas
+  minReplicas: 1
+  # -- Maximum number of replicas
+  maxReplicas: 10
+  # -- Target CPU utilization percentage
+  targetCPUUtilizationPercentage: 80
+  # -- Target memory utilization percentage
+  # targetMemoryUtilizationPercentage: 80

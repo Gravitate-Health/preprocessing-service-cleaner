@@ -312,6 +312,123 @@ python test/test_html_optimization_standalone.py
 
 See `test/README_TESTS.md` for detailed test documentation.
 
+## Deployment
+
+This service can be deployed to Kubernetes using Helm charts, either from the OCI registry (recommended) or from a local clone.
+
+### Prerequisites
+- Kubernetes cluster 1.19+
+- Helm 3.8+
+- kubectl configured to access your cluster
+
+### Deploy via Helm (OCI Registry)
+
+The recommended way to deploy is directly from the GitHub Container Registry without cloning the repository:
+
+```bash
+# Login to GHCR (if the chart is private)
+helm registry login ghcr.io -u <YOUR_GITHUB_USERNAME>
+
+# Deploy directly from the OCI registry
+helm install preprocessing-service oci://ghcr.io/gravitate-health/charts/preprocessing-service-cleaner --version 0.1.0
+
+# Deploy with custom values
+helm install preprocessing-service oci://ghcr.io/gravitate-health/charts/preprocessing-service-cleaner \
+  --version 0.1.0 \
+  --set image.tag=main \
+  --set config.enableHtmlOptimization=false \
+  --set resources.limits.memory=1Gi
+
+# Upgrade an existing release
+helm upgrade preprocessing-service oci://ghcr.io/gravitate-health/charts/preprocessing-service-cleaner \
+  --version 0.1.0 \
+  --reuse-values
+
+# Uninstall
+helm uninstall preprocessing-service
+```
+
+### Deploy from Local Clone
+
+If you have the repository cloned locally:
+
+```bash
+# From the repository root
+helm install preprocessing-service ./charts/preprocessing-service-cleaner
+
+# With custom values file
+helm install preprocessing-service ./charts/preprocessing-service-cleaner \
+  -f my-custom-values.yaml
+
+# With inline overrides
+helm install preprocessing-service ./charts/preprocessing-service-cleaner \
+  --set replicaCount=2 \
+  --set image.tag=v1.0.0
+```
+
+### Configuration Options
+
+Key configuration values you can override:
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `replicaCount` | Number of replicas | `1` |
+| `image.repository` | Container image repository | `ghcr.io/gravitate-health/preprocessing-service-cleaner` |
+| `image.tag` | Container image tag | `latest` |
+| `image.pullPolicy` | Image pull policy | `IfNotPresent` |
+| `config.enableHtmlOptimization` | Enable HTML optimization | `true` |
+| `config.enableLinkCleanup` | Enable unused link cleanup | `true` |
+| `config.enableStyleCleanup` | Enable style cleanup | `true` |
+| `service.type` | Kubernetes service type | `ClusterIP` |
+| `service.port` | Service port | `80` |
+| `resources.limits.cpu` | CPU limit | `500m` |
+| `resources.limits.memory` | Memory limit | `512Mi` |
+| `ingress.enabled` | Enable ingress | `false` |
+| `autoscaling.enabled` | Enable HPA | `false` |
+
+See `charts/preprocessing-service-cleaner/values.yaml` for all available options.
+
+### Service Discovery
+
+The service is automatically labeled with `eu.gravitate-health.fosps.preprocessing: "true"` to enable discovery by the Focus Manager component in the Gravitate Health ecosystem.
+
+### Local Development
+
+Validate and test the Helm chart before deploying:
+
+```bash
+# Lint the chart
+helm lint ./charts/preprocessing-service-cleaner
+
+# Template the chart (dry-run)
+helm template preprocessing-service ./charts/preprocessing-service-cleaner
+
+# Template with custom values
+helm template preprocessing-service ./charts/preprocessing-service-cleaner \
+  --set image.tag=dev \
+  --set config.enableHtmlOptimization=false
+
+# Install in dry-run mode
+helm install preprocessing-service ./charts/preprocessing-service-cleaner --dry-run --debug
+```
+
+### Publishing the Helm Chart to OCI Registry
+
+To publish the chart to GitHub Container Registry:
+
+```bash
+# Package the chart
+helm package ./charts/preprocessing-service-cleaner
+
+# Login to GHCR
+echo $GITHUB_TOKEN | helm registry login ghcr.io -u <YOUR_GITHUB_USERNAME> --password-stdin
+
+# Push to registry
+helm push preprocessing-service-cleaner-0.1.0.tgz oci://ghcr.io/gravitate-health/charts
+```
+
+Note: The GitHub Actions workflow (`.github/workflows/helm-publish.yml`) should automate this process on release tags.
+
 ## License
 
 Licensed under Apache Software License 2.0, See `LICENSE` for details.

@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "preprocessing-service-cleaner.fullname" . }}
+  labels:
+    {{- include "preprocessing-service-cleaner.labels" . | nindent 4 }}
+data:
+  ENABLE_HTML_OPTIMIZATION: {{ .Values.config.enableHtmlOptimization | quote }}
+  ENABLE_LINK_CLEANUP: {{ .Values.config.enableLinkCleanup | quote }}
+  ENABLE_STYLE_CLEANUP: {{ .Values.config.enableStyleCleanup | quote }}
+  PYTHONUNBUFFERED: "1"
